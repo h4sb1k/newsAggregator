@@ -12,6 +12,8 @@ news_app application to get actual news
 -------------------
 development_version 
 -------------------
+0. Add your NewsApi API Key in newsapi_parser.py
+
 1. python3 -m venv .venv
 2. source bin/activate | ./Scripts/activate
 3. pip3 install -r requirements.txt
