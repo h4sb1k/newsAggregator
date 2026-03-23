@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Агрегатор Новостей</title>
+
+    <!-- 🖼️ Favicon (иконка во вкладке браузера) -->
+    <link rel="icon" href="{{ url_for('static', filename='images/mayak.ico') }}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/mayak.ico') }}" type="image/x-icon">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-top">
+            <div class="logo">
+                <!-- 🖼️ Логотип в шапке -->
+{#                <a href="{{ url_for('index') }}" class="user-profile-info">#}
+                    <div class="logo-icon" onclick="location.reload()">
+                        <img src="{{ url_for('static', filename='images/mayak-logo.png') }}" alt="Маяк" class="logo-image">
+                    </div>
+                    <div class="logo-text">
+                        <span class="logo-subtitle">Агрегатор Новостей</span>
+                    </div>
+{#                </a>#}
+            </div>
+            <nav class="header-nav">
+    <!-- 🔘 Кнопка переключения темы -->
+    <button class="nav-btn theme-toggle" id="themeToggle" title="Выбрать тему">
+        <span class="theme-icon">🌗</span>
+    </button>
+
+    <!-- 🔐 Кнопки авторизации -->
+    {% if not current_user.is_authenticated %}
+        <!-- Не авторизован → показать Вход -->
+        <a href="{{ url_for('login') }}" class="nav-btn" style="text-decoration: none;">
+            🔐 Вход
+        </a>
+    {% else %}
+        <!-- Авторизован → показать Профиль и Выйти -->
+        <div class="user-profile" style="cursor: pointer;" onclick="window.location.href='{{ url_for('admin_panel') }}'" title="Перейти в админ-панель">
+            <div class="user-profile-icon">
+                {{ current_user.username[0].upper() }}
+            </div>
+            <div class="user-profile-info">
+                <span class="user-profile-name">{{ current_user.username }}</span>
+                <span class="user-profile-badge">Admin</span>
+            </div>
+        </div>
+        <button class="nav-btn" onclick="confirmLogout()" title="Выйти из аккаунта">
+            🚪 Выйти
+        </button>
+    {% endif %}
+
+    <button class="nav-btn" onclick="showInfo('about')">О проекте</button>
+{#    <button class="nav-btn" onclick="showInfo('settings')">Настройки</button>#}
+</nav>
+        </div>
+        <div class="header-bottom">
+            <nav class="main-nav">
+                <button class="main-nav-item active" data-category="all">Все новости</button>
+                <button class="main-nav-item" data-category="Россия">🇷🇺 Россия</button>
+                <button class="main-nav-item" data-category="США">🇺🇸 США</button>
+                <button class="main-nav-item" data-category="Украина">🇺🇦 Украина</button>
+                <button class="main-nav-item" data-category="Европа">🇪🇺 Европа</button>
+            </nav>
+            <div class="search-container">
+                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" class="search-input" id="searchInput" placeholder="Поиск новостей...">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- News Feed -->
+        <section class="news-feed">
+            <div class="feed-header">
+                <div>
+                    <h1 class="feed-title">Лента новостей</h1>
+                    <p class="feed-subtitle">Актуальные события мировой политики</p>
+                </div>
+            </div>
+
+            <div class="category-tabs" id="categoryTabs">
+                <button class="category-tab active" data-category="all">📰 Все</button>
+                <button class="category-tab" data-category="Россия">🇷🇺 Россия</button>
+                <button class="category-tab" data-category="США">🇺🇸 США</button>
+                <button class="category-tab" data-category="Украина">🇺🇦 Украина</button>
+                <button class="category-tab" data-category="Европа">🇪🇺 Европа</button>
+                <button class="category-tab" data-category="Ближний Восток">🕌 Ближний Восток</button>
+                <button class="category-tab" data-category="Азия">🌏 Азия</button>
+                <button class="category-tab" data-category="Северная Америка">🌎 Сев. Америка</button>
+                <button class="category-tab" data-category="Латинская Америка">💃 Лат. Америка</button>
+                <button class="category-tab" data-category="Африка">🌍 Африка</button>
+                <button class="category-tab" data-category="Австралия и Океания">🦘 Океания</button>
+            </div>
+
+            <div id="newsGrid" class="news-grid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div class="load-more-container">
+                <button class="load-more-btn" id="loadMoreBtn" disabled>Загрузить ещё</button>
+            </div>
+        </section>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Categories -->
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">📁 Категории</h2>
+                <div class="category-list" id="sidebarCategories">
+                    <div class="category-item active" data-category="all">
+                        <span class="category-item-name">📰 Все новости</span>
+                        <span class="category-item-count" id="count-all">0</span>
+                    </div>
+                    <div class="category-item" data-category="Россия">
+                        <span class="category-item-name">🇷🇺 Россия</span>
+                        <span class="category-item-count" id="count-Россия">0</span>
+                    </div>
+                    <div class="category-item" data-category="США">
+                        <span class="category-item-name">🇺🇸 США</span>
+                        <span class="category-item-count" id="count-США">0</span>
+                    </div>
+                    <div class="category-item" data-category="Украина">
+                        <span class="category-item-name">🇺🇦 Украина</span>
+                        <span class="category-item-count" id="count-Украина">0</span>
+                    </div>
+                    <div class="category-item" data-category="Европа">
+                        <span class="category-item-name">🇪🇺 Европа</span>
+                        <span class="category-item-count" id="count-Европа">0</span>
+                    </div>
+                    <div class="category-item" data-category="Ближний Восток">
+                        <span class="category-item-name">🕌 Ближний Восток</span>
+                        <span class="category-item-count" id="count-Ближний Восток">0</span>
+                    </div>
+                    <div class="category-item" data-category="Азия">
+                        <span class="category-item-name">🌏 Азия</span>
+                        <span class="category-item-count" id="count-Азия">0</span>
+                    </div>
+                    <div class="category-item" data-category="Северная Америка">
+                        <span class="category-item-name">🌎 Сев. Америка</span>
+                        <span class="category-item-count" id="count-Северная Америка">0</span>
+                    </div>
+                    <div class="category-item" data-category="Латинская Америка">
+                        <span class="category-item-name">💃 Лат. Америка</span>
+                        <span class="category-item-count" id="count-Латинская Америка">0</span>
+                    </div>
+                    <div class="category-item" data-category="Африка">
+                        <span class="category-item-name">🌍 Африка</span>
+                        <span class="category-item-count" id="count-Африка">0</span>
+                    </div>
+                    <div class="category-item" data-category="Австралия и Океания">
+                        <span class="category-item-name">🦘 Океания</span>
+                        <span class="category-item-count" id="count-Австралия и Океания">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">📊 Статистика</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalNews">0</div>
+                        <div class="stat-label">Всего новостей</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="todayNews">0</div>
+                        <div class="stat-label">За сегодня</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p class="footer-text">© 2026 MOIMP-PROJECT. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <!-- 🎨 Модальное окно выбора темы -->
+    <div class="modal" id="themeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Выберите тему</h3>
+                <button class="modal-close" onclick="closeThemeModal()">&times;</button>
+            </div>
+            <div class="theme-options">
+                <button class="theme-option" data-theme="system" onclick="setTheme('system')">
+                    <span class="theme-option-icon">💻</span>
+                    <span class="theme-option-name">Системная</span>
+                    <span class="theme-option-check">✓</span>
+                </button>
+                <button class="theme-option" data-theme="light" onclick="setTheme('light')">
+                    <span class="theme-option-icon">☀️</span>
+                    <span class="theme-option-name">Светлая</span>
+                    <span class="theme-option-check">✓</span>
+                </button>
+                <button class="theme-option" data-theme="dark" onclick="setTheme('dark')">
+                    <span class="theme-option-icon">🌙</span>
+                    <span class="theme-option-name">Тёмная</span>
+                    <span class="theme-option-check">✓</span>
+                </button>
+            </div>
+        </div>
+    </div>
+<!-- 🔐 Модальное окно подтверждения выхода -->
+<div class="modal" id="logoutModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>🚪 Выход из системы</h3>
+            <button class="modal-close" onclick="closeLogoutModal()">&times;</button>
+        </div>
+        <div style="padding: 1rem 0;">
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                Вы уверены, что хотите выйти из аккаунта <strong>{{ current_user.username }}</strong>?
+            </p>
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                <button class="btn" onclick="closeLogoutModal()"
+                        style="background: var(--bg-secondary); color: var(--text-primary);">
+                    Отмена
+                </button>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">
+                    Выйти
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 📜 Скрипт управления модальным окном -->
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель — Агрегатор Новостей</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='images/mayak.ico') }}" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <!-- 🔐 CSRF Token -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+<body>
+    <!-- 🔐 Header (как в index.html) -->
+    <header class="admin-header">
+        <div class="admin-header-top">
+            <!-- Логотип → переход на главную -->
+            <a href="{{ url_for('index') }}" class="admin-logo">
+                <div class="admin-logo-icon">
+                    <img src="{{ url_for('static', filename='images/mayak-logo.png') }}" alt="Маяк">
+                </div>
+                <div class="admin-logo-text">
+                    <span class="admin-logo-title">Агрегатор Новостей</span>
+                    <span class="admin-logo-subtitle">Админ-панель</span>
+                </div>
+            </a>
+
+            <div class="admin-header-nav">
+                <!-- Профиль пользователя -->
+                <div class="user-profile">
+                    <div class="user-profile-icon">
+                        {{ current_user.username[0].upper() }}
+                    </div>
+                    <div class="user-profile-info">
+                        <span class="user-profile-name">{{ current_user.username }}</span>
+                        <span class="user-profile-badge">Admin</span>
+                    </div>
+                </div>
+
+                <!-- 🔘 Кнопка переключения темы (ДОБАВИТЬ) -->
+                <button class="nav-btn theme-toggle" id="themeToggle" title="Выбрать тему">
+                    <span class="theme-icon">🌗</span>
+                </button>
+
+                <!-- Кнопка смены пароля -->
+                <a href="{{ url_for('change_password') }}" class="nav-btn" title="Сменить пароль">
+                    🔑 Пароль
+                </a>
+
+                <!-- Кнопка выхода -->
+                <button class="nav-btn btn-danger" onclick="confirmLogout()" title="Выйти">
+                    🚪 Выйти
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 🔐 Модальное окно подтверждения выхода -->
+    <div class="modal" id="logoutModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>🚪 Выход из системы</h3>
+                <button class="modal-close" onclick="closeLogoutModal()">&times;</button>
+            </div>
+            <div style="padding: 1rem 0;">
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    Вы уверены, что хотите выйти из аккаунта <strong>{{ current_user.username }}</strong>?
+                </p>
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button class="btn" onclick="closeLogoutModal()"
+                            style="background: var(--bg-secondary); color: var(--text-primary);">
+                        Отмена
+                    </button>
+                    <a href="{{ url_for('logout') }}" class="btn btn-danger">
+                        Выйти
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="admin-container">
+        <!-- Status Cards -->
+        <div class="admin-grid">
+            <!-- System Status -->
+            <div class="admin-card">
+                <h2 class="admin-card-title">📊 Статус системы</h2>
+                <div class="setting-row">
+                    <span class="setting-label">Всего новостей</span>
+                    <strong id="totalNews">0</strong>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Последнее обновление</span>
+                    <span id="lastUpdate">-</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Автообновление</span>
+                    <span class="status-indicator status-active" id="autoUpdateStatus">
+                        <span class="status-dot"></span>
+                        <span id="autoUpdateText">Включено</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="admin-card">
+                <h2 class="admin-card-title">⚡ Быстрые действия</h2>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <button class="btn btn-success" onclick="runParse(['cnn', 'newsapi'])">
+                        🔄 Обновить всё
+                    </button>
+                    <button class="btn btn-primary" onclick="runParse(['cnn'])">
+                        🕷️ Только CNN
+                    </button>
+                    <button class="btn btn-primary" onclick="runParse(['newsapi'])">
+                        📰 Только NewsAPI
+                    </button>
+                </div>
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Запуск парсеров...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="admin-grid">
+            <!-- Auto Update Settings -->
+            <div class="admin-card">
+                <h2 class="admin-card-title">⏰ Автообновление</h2>
+                <div class="setting-row">
+                    <span class="setting-label">Включить автообновление</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoUpdateEnabled" data-setting="auto_update_enabled">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Интервал (минут)</span>
+                    <input type="number" id="autoUpdateInterval" class="input-field"
+                           data-setting="auto_update_interval" min="30" max="1440">
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Очищать новости старше (дней)</span>
+                    <input type="number" id="cleanupDays" class="input-field"
+                           data-setting="cleanup_days" min="1" max="30">
+                </div>
+            </div>
+
+            <!-- Parser Settings -->
+            <div class="admin-card">
+                <h2 class="admin-card-title">🕷️ Источники новостей</h2>
+                <div class="setting-row">
+                    <span class="setting-label">CNN Lite</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="cnnEnabled" data-setting="cnn_enabled">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">NewsAPI</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="newsapiEnabled" data-setting="parser_newsapi_enabled">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">NewsAPI: статей на регион</span>
+                    <input type="number" id="newsapiPageSize" class="input-field"
+                           data-setting="newsapi_page_size" min="1" max="20">
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Перевод новостей</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="translationEnabled" data-setting="translation_enabled">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔘 Единая кнопка сохранения (по центру после настроек) -->
+        <div class="save-section">
+            <button class="btn btn-primary" id="saveSettingsBtn" onclick="saveAllSettings()" style="padding: 0.875rem 2.5rem; font-size: 0.9375rem;">
+                💾 Сохранить настройки
+            </button>
+            <span id="saveStatus" class="save-status"></span>
+        </div>
+
+        <!-- Recent News -->
+        <div class="admin-card" style="margin-top: 1.5rem;">
+            <h2 class="admin-card-title">📰 Последние новости</h2>
+            <button class="btn" onclick="loadLogs()" style="margin-bottom: 1rem; background: var(--bg-secondary);">
+                🔄 Обновить список
+            </button>
+            <div style="overflow-x: auto;">
+                <table class="logs-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Заголовок</th>
+                            <th>Источник</th>
+                            <th>Категория</th>
+                            <th>Дата</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted);">Загрузка...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<!-- 🎨 Модальное окно выбора темы (такое же как на index.html) -->
+<div class="modal" id="themeModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🎨 Выберите тему</h3>
+            <button class="modal-close" onclick="closeThemeModal()">&times;</button>
+        </div>
+        <div class="theme-options">
+            <button class="theme-option" data-theme="system" onclick="setTheme('system')">
+                <span class="theme-option-icon">💻</span>
+                <span class="theme-option-name">Системная</span>
+                <span class="theme-option-check">✓</span>
+            </button>
+            <button class="theme-option" data-theme="light" onclick="setTheme('light')">
+                <span class="theme-option-icon">☀️</span>
+                <span class="theme-option-name">Светлая</span>
+                <span class="theme-option-check">✓</span>
+            </button>
+            <button class="theme-option" data-theme="dark" onclick="setTheme('dark')">
+                <span class="theme-option-icon">🌙</span>
+                <span class="theme-option-name">Тёмная</span>
+                <span class="theme-option-check">✓</span>
+            </button>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

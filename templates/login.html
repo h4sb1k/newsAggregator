@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход — Админ-панель</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='images/mayak.ico') }}" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">
+                    <img src="{{ url_for('static', filename='images/mayak-logo.png') }}" alt="Маяк">
+                </div>
+                <h1 class="login-title">Вход в систему</h1>
+                <p class="login-subtitle">Агрегатор Новостей — Админ-панель</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('login') }}">
+                {{ form.hidden_tag() }}
+
+                <div class="form-group">
+                    <label class="form-label" for="username">Имя пользователя</label>
+                    {{ form.username(class="form-input", placeholder="admin", autocomplete="username") }}
+                    {% if form.username.errors %}
+                        {% for error in form.username.errors %}
+                            <div class="form-error">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Пароль</label>
+                    {{ form.password(class="form-input", placeholder="••••••••", autocomplete="current-password") }}
+                    {% if form.password.errors %}
+                        {% for error in form.password.errors %}
+                            <div class="form-error">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <div class="form-options">
+                    <label class="remember-me">
+                        {{ form.remember() }}
+                        <span>Запомнить меня</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-login" id="loginBtn">
+                    Войти
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>© 2026 MOIMP-PROJECT. Все права защищены.</p>
+                <p><a href="{{ url_for('index') }}">← Вернуться на сайт</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Защита от повторной отправки формы
+        document.querySelector('form').addEventListener('submit', function() {
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = 'Вход...';
+        });
+
+        // Автоматическая фокусировка
+        document.getElementById('username').focus();
+    </script>
+<div class="login-footer">
+    <p>© 2026 MOIMP-PROJECT. Все права защищены.</p>
+    <p>
+        <a href="{{ url_for('index') }}">← Вернуться на сайт</a>
+        {% if current_user.is_authenticated %}
+            | <a href="{{ url_for('admin_panel') }}">Перейти в админ-панель</a>
+        {% endif %}
+    </p>
+</div>
+</body>
+</html>
