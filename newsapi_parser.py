@@ -14,7 +14,7 @@ from db import init_db, insert_news
 from image_utils import download_image, PLACEHOLDER_PATH
 
 # 🔐 API-ключ
-API_KEY = os.getenv('NEWSAPI_KEY', '90b69fd7887e4e4993b0516d5ba0b546')
+API_KEY = os.getenv('NEWSAPI_KEY', 'YOUR-API-KEY')
 newsapi = NewsApiClient(api_key=API_KEY)
 
 # ⚙️ НАСТРОЙКИ ПРОИЗВОДИТЕЛЬНОСТИ
